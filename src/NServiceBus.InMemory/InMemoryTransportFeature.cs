@@ -13,22 +13,18 @@ namespace NServiceBus.InMemory
 
         protected override void Configure(FeatureConfigurationContext context, string connectionString)
         {
-            var endpointInfo = new EndpointInfo
+            context.Container.RegisterSingleton(new EndpointInfo
             {
                 Name = GetLocalAddress(context.Settings)
-            };
-            
-            var server = new InMemoryDatabase();
-            
-            context.Container
-                .RegisterSingleton(endpointInfo)
-                .RegisterSingleton(new RunWhenBusStartsAndStops())
-                .RegisterSingleton<ICreateQueues>(new CreateQueues())
-                .RegisterSingleton<IDeferMessages>(new DeferMessages())
-                .RegisterSingleton<IManageSubscriptions>(new ManageSubscriptions())
-                .RegisterSingleton<IPublishMessages>(new PublishMessages())
-                .RegisterSingleton<ISendMessages>(new SendMessages())
-                .ConfigureComponent<DequeueMessages>(DependencyLifecycle.InstancePerCall);
+            });
+
+            context.Container.ConfigureComponent<CreateQueues>(DependencyLifecycle.SingleInstance);
+            context.Container.ConfigureComponent<DeferMessages>(DependencyLifecycle.SingleInstance);
+            context.Container.ConfigureComponent<DequeueMessages>(DependencyLifecycle.InstancePerCall);
+            context.Container.ConfigureComponent<ManageSubscriptions>(DependencyLifecycle.SingleInstance);
+            context.Container.ConfigureComponent<PublishMessages>(DependencyLifecycle.SingleInstance);
+            context.Container.ConfigureComponent<SendMessages>(DependencyLifecycle.SingleInstance);
+            context.Container.ConfigureComponent<RunWhenBusStartsAndStops>(DependencyLifecycle.SingleInstance);
         }
 
         protected override string ExampleConnectionStringForErrorMessage
