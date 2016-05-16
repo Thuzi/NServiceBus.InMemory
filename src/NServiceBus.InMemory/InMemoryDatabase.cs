@@ -95,7 +95,7 @@ namespace NServiceBus.InMemory
         /// The list of nsb queues.
         /// </summary>
         public readonly ConcurrentDictionary<string, NsbQueue> Queues = new ConcurrentDictionary<string, NsbQueue>();
-
+        
         /// <summary>
         /// A place holder for messages that will get added to the queue at a later time.
         /// </summary>

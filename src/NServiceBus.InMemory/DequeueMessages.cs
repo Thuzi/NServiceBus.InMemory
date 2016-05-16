@@ -11,18 +11,20 @@ namespace NServiceBus.InMemory
         public InMemoryDatabase InMemoryDatabase { get; set; }
         public void Init(Address address, TransactionSettings transactionSettings, Func<TransportMessage, bool> tryProcessMessage, Action<TransportMessage, Exception> endProcessMessage)
         {
-            if (!InMemoryDatabase.Queues.TryGetValue(address.Queue, out queue)) queue = new NsbQueue
+            if (!InMemoryDatabase.Queues.TryGetValue(address.Queue, out queue) &&
+                !InMemoryDatabase.Queues.TryAdd(address.Queue, queue = new NsbQueue
+                {
+                    Enabled = false,
+                    MaximumConcurrencyLevel = 1
+                }))
             {
-                Enabled = false,
-                MaximumConcurrencyLevel = 1
-            };
+                throw new InvalidProgramException($"Unable to get or add the queue '{address.Queue}'.");
+            }
 
             queue.Address = address;
             queue.Finalizer = endProcessMessage;
             queue.Handler = tryProcessMessage;
             queue.TransactionSettings = transactionSettings;
-
-            InMemoryDatabase.Queues[address.Queue] = queue;
         }
         public void Start(int maximumConcurrencyLevel)
         {
