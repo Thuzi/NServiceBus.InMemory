@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using NServiceBus.Transports;
 using NServiceBus.Unicast;
 
@@ -18,6 +19,10 @@ namespace NServiceBus.InMemory
                     if (InMemoryDatabase.Queues.TryGetValue(endpoint, out eventQueue))
                     {
                         eventQueue.AddMessage(message);
+                    }
+                    else
+                    {
+                        throw new InvalidProgramException("Unable to add event message to the queue.");
                     }
                 }
             }
