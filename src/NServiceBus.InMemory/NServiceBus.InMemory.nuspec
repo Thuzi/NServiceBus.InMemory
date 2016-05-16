@@ -2,7 +2,7 @@
 <package >
 	<metadata>
 		<id>NServiceBus.InMemory</id>
-		<version>5.2.141</version>
+		<version>5.2.142</version>
 		<title>NServiceBus InMemory Transport</title>
 		<authors>cy.a.scott</authors>
 		<owners>cy.a.scott</owners>
