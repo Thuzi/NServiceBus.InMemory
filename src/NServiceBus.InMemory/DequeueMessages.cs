@@ -21,6 +21,8 @@ namespace NServiceBus.InMemory
             queue.Finalizer = endProcessMessage;
             queue.Handler = tryProcessMessage;
             queue.TransactionSettings = transactionSettings;
+
+            InMemoryDatabase.Queues[address.Queue] = queue;
         }
         public void Start(int maximumConcurrencyLevel)
         {
