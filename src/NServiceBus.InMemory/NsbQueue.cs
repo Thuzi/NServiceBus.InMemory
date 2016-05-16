@@ -48,6 +48,20 @@ namespace NServiceBus.InMemory
                     }
                 }
             }
+            else
+            {
+                Timer timer = null;
+                timer = new Timer(timerState =>
+                {
+                    if (timer != null)
+                    {
+                        timer.Dispose();
+                    }
+
+                    ProcessQueue();
+                }, 
+                null, TimeSpan.FromSeconds(1), TimeSpan.FromDays(1));
+            }
 
             Interlocked.Decrement(ref concurrencyLevel);
         }
@@ -111,9 +125,9 @@ namespace NServiceBus.InMemory
         /// </summary>
         public void ProcessQueue()
         {
-            if (IsEmpty) return;
+            if (IsEmpty || !Enabled) return;
 
-            if (Interlocked.Increment(ref concurrencyLevel) > MaximumConcurrencyLevel)
+            if (MaximumConcurrencyLevel > 0 && Interlocked.Increment(ref concurrencyLevel) > MaximumConcurrencyLevel)
             {
                 Interlocked.Decrement(ref concurrencyLevel);
             }
