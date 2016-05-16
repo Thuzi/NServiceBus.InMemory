@@ -172,6 +172,10 @@ namespace NServiceBus.InMemory
             foreach (var queue in Queues.Values)
             {
                 queue.Enabled = true;
+                if (!queue.IsEmpty)
+                {
+                    queue.ProcessQueue();
+                }
             }
         }
     }
