@@ -5,7 +5,7 @@
         public InMemoryDatabase InMemoryDatabase { get; set; }
         public void Start()
         {
-            InMemoryDatabase.StartServer();
+            InMemoryDatabase.StartServer(false);
         }
         public void Stop()
         {
