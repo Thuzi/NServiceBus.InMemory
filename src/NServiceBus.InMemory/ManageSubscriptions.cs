@@ -10,7 +10,7 @@ namespace NServiceBus.InMemory
         public InMemoryDatabase InMemoryDatabase { get; set; }
         public void Subscribe(Type eventType, Address publisherAddress)
         {
-            if (!InMemoryDatabase.Topics.TryAdd(eventType, new HashSet<string>
+            if (!InMemoryDatabase.Topics.TryAdd(eventType, new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 Endpoint.Name
             }))
