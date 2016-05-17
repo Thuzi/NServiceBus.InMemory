@@ -33,120 +33,129 @@ namespace NServiceBus.InMemory.Tests
         [Test]
         public void SendingACommandAndWaitingForAnEventToBePublished()
         {
-            Assert.IsTrue(Scenario.Define(new SendTestsContext
+            var context = new SendTestsContext
             {
                 BetaCommandHandled = true
-            })
-            .WithEndpoint<AlphaServer>(behavior =>
-            {
-                behavior.When(ctx => ctx.EndpointsStarted && !ctx.SendCommandSent, (bus, ctx) =>
-                {
-                    ctx.SendCommandSent = true;
-                    ctx.Events.MessageHandled += args =>
+            };
+
+            using (context.InMemoryDatabase)
+                Assert.IsTrue(Scenario.Define(context)
+                    .WithEndpoint<AlphaServer>(behavior =>
                     {
-                        var command = args.Message as AlphaCommand;
-                        if (command != null)
+                        behavior.When(ctx => ctx.EndpointsStarted && !ctx.SendCommandSent, (bus, ctx) =>
                         {
-                            Assert.AreEqual(ctx.CommandId, command.Id, "The command sent does not match the command handled.");
-                            ctx.SendCommandHandled = true;
-                        }
-                        var commandHandledEvent = args.Message as CommandProcessedInAlpha;
-                        if (commandHandledEvent != null)
-                        {
-                            Assert.AreEqual(ctx.CommandId, commandHandledEvent.Id, "The event published does not match the command sent.");
-                            ctx.CommandHandledEventPublished = true;
-                        }
-                    };
-                    bus.Send(new AlphaCommand
-                    {
-                        Id = ctx.CommandId = Guid.NewGuid()
-                    });
-                });
-            })
-            .Done(ctx => ctx.TestComplete)
-            .Run(TimeSpan.FromMinutes(5)).TestComplete,
-            "The test did not complete");
+                            ctx.SendCommandSent = true;
+                            ctx.Events.MessageHandled += args =>
+                            {
+                                var command = args.Message as AlphaCommand;
+                                if (command != null)
+                                {
+                                    Assert.AreEqual(ctx.CommandId, command.Id, "The command sent does not match the command handled.");
+                                    ctx.SendCommandHandled = true;
+                                }
+                                var commandHandledEvent = args.Message as CommandProcessedInAlpha;
+                                if (commandHandledEvent != null)
+                                {
+                                    Assert.AreEqual(ctx.CommandId, commandHandledEvent.Id, "The event published does not match the command sent.");
+                                    ctx.CommandHandledEventPublished = true;
+                                }
+                            };
+                            bus.Send(new AlphaCommand
+                            {
+                                Id = ctx.CommandId = Guid.NewGuid()
+                            });
+                        });
+                    })
+                    .Done(ctx => ctx.TestComplete)
+                    .Run(TimeSpan.FromMinutes(5)).TestComplete,
+                    "The test did not complete");
         }
         [Test]
         public void DeferingACommandAndWaitingForAnEventToBePublished()
         {
-            Assert.IsTrue(Scenario.Define(new SendTestsContext
+            var context = new SendTestsContext
             {
                 BetaCommandHandled = true
-            })
-            .WithEndpoint<AlphaServer>(behavior => behavior
-                .When(ctx => ctx.EndpointsStarted && !ctx.SendCommandSent, (bus, ctx) =>
-                {
-                    ctx.SendCommandSent = true;
-                    ctx.Events.MessageHandled += args =>
+            };
+
+            using (context.InMemoryDatabase)
+                Assert.IsTrue(Scenario.Define(context)
+                .WithEndpoint<AlphaServer>(behavior => behavior
+                    .When(ctx => ctx.EndpointsStarted && !ctx.SendCommandSent, (bus, ctx) =>
                     {
-                        var command = args.Message as AlphaCommand;
-                        if (command != null)
+                        ctx.SendCommandSent = true;
+                        ctx.Events.MessageHandled += args =>
                         {
-                            Assert.AreEqual(ctx.CommandId, command.Id, "The command sent does not match the command handled.");
-                            ctx.SendCommandHandled = true;
-                        }
-                        var commandHandledEvent = args.Message as CommandProcessedInAlpha;
-                        if (commandHandledEvent != null)
+                            var command = args.Message as AlphaCommand;
+                            if (command != null)
+                            {
+                                Assert.AreEqual(ctx.CommandId, command.Id, "The command sent does not match the command handled.");
+                                ctx.SendCommandHandled = true;
+                            }
+                            var commandHandledEvent = args.Message as CommandProcessedInAlpha;
+                            if (commandHandledEvent != null)
+                            {
+                                Assert.AreEqual(ctx.CommandId, commandHandledEvent.Id, "The event published does not match the command sent.");
+                                Assert.IsTrue(commandHandledEvent.ProcessedOn - commandHandledEvent.CreatedOn > TimeSpan.FromSeconds(14), "The command was not defered.");
+                                ctx.CommandHandledEventPublished = true;
+                            }
+                        };
+                        bus.Defer(DateTime.UtcNow.AddSeconds(15), new AlphaCommand
                         {
-                            Assert.AreEqual(ctx.CommandId, commandHandledEvent.Id, "The event published does not match the command sent.");
-                            Assert.IsTrue(commandHandledEvent.ProcessedOn - commandHandledEvent.CreatedOn > TimeSpan.FromSeconds(14), "The command was not defered.");
-                            ctx.CommandHandledEventPublished = true;
-                        }
-                    };
-                    bus.Defer(DateTime.UtcNow.AddSeconds(15), new AlphaCommand
-                    {
-                        Id = ctx.CommandId = Guid.NewGuid()
-                    });
-                }))
-            .Done(ctx => ctx.TestComplete)
-            .Run(TimeSpan.FromMinutes(5)).TestComplete,
-            "The test did not complete");
+                            Id = ctx.CommandId = Guid.NewGuid()
+                        });
+                    }))
+                .Done(ctx => ctx.TestComplete)
+                .Run(TimeSpan.FromMinutes(5)).TestComplete,
+                "The test did not complete");
         }
         [Test]
         public void SendCommandFromOneEndpointToAnother()
         {
-            Assert.IsTrue(Scenario.Define(new SendTestsContext())
-            .WithEndpoint<AlphaServer>(behavior => behavior
-                .When(ctx => ctx.EndpointsStarted && !ctx.SendCommandSent, (bus, ctx) =>
-                {
-                    ctx.SendCommandSent = true;
-                    ctx.Events.MessageHandled += args =>
+            var context = new SendTestsContext();
+
+            using (context.InMemoryDatabase)
+                Assert.IsTrue(Scenario.Define(context)
+                .WithEndpoint<AlphaServer>(behavior => behavior
+                    .When(ctx => ctx.EndpointsStarted && !ctx.SendCommandSent, (bus, ctx) =>
                     {
-                        var command = args.Message as SendCommandToBeta;
-                        if (command != null)
+                        ctx.SendCommandSent = true;
+                        ctx.Events.MessageHandled += args =>
                         {
-                            Assert.AreEqual(ctx.CommandId, command.Id, "The command sent does not match the command handled.");
-                            ctx.SendCommandHandled = true;
-                        }
-                    };
-                    bus.Send(new SendCommandToBeta
+                            var command = args.Message as SendCommandToBeta;
+                            if (command != null)
+                            {
+                                Assert.AreEqual(ctx.CommandId, command.Id, "The command sent does not match the command handled.");
+                                ctx.SendCommandHandled = true;
+                            }
+                        };
+                        bus.Send(new SendCommandToBeta
+                        {
+                            Id = ctx.CommandId = Guid.NewGuid()
+                        });
+                    }))
+                .WithEndpoint<BetaServer>(behavior => behavior
+                    .When(ctx => ctx.EndpointsStarted, (bus, ctx) =>
                     {
-                        Id = ctx.CommandId = Guid.NewGuid()
-                    });
-                }))
-            .WithEndpoint<BetaServer>(behavior => behavior
-                .When(ctx => ctx.EndpointsStarted, (bus, ctx) =>
-                {
-                    ctx.Events.MessageHandled += args =>
-                    {
-                        var command = args.Message as BetaCommand;
-                        if (command != null)
+                        ctx.Events.MessageHandled += args =>
                         {
-                            Assert.AreEqual(ctx.CommandId, command.Id, "The command sent does not match the command handled.");
-                            ctx.BetaCommandHandled = true;
-                        }
-                        var commandHandledEvent = args.Message as CommandProcessedInBeta;
-                        if (commandHandledEvent != null)
-                        {
-                            Assert.AreEqual(ctx.CommandId, commandHandledEvent.Id, "The event published does not match the command sent.");
-                            ctx.CommandHandledEventPublished = true;
-                        }
-                    };
-                }))
-            .Done(ctx => ctx.TestComplete)
-            .Run(TimeSpan.FromMinutes(5)).TestComplete,
-            "The test did not complete");
+                            var command = args.Message as BetaCommand;
+                            if (command != null)
+                            {
+                                Assert.AreEqual(ctx.CommandId, command.Id, "The command sent does not match the command handled.");
+                                ctx.BetaCommandHandled = true;
+                            }
+                            var commandHandledEvent = args.Message as CommandProcessedInBeta;
+                            if (commandHandledEvent != null)
+                            {
+                                Assert.AreEqual(ctx.CommandId, commandHandledEvent.Id, "The event published does not match the command sent.");
+                                ctx.CommandHandledEventPublished = true;
+                            }
+                        };
+                    }))
+                .Done(ctx => ctx.TestComplete)
+                .Run(TimeSpan.FromMinutes(5)).TestComplete,
+                "The test did not complete");
         }
     }
 }

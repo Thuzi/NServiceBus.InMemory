@@ -25,8 +25,10 @@ namespace NServiceBus.InMemory.Tests
         [Test]
         public void SetupBus()
         {
-            Assert.IsTrue(
-                Scenario.Define(new SetupBusTestsContext())
+            var context = new SetupBusTestsContext();
+
+            using (context.InMemoryDatabase)
+                Assert.IsTrue(Scenario.Define(context)
                     .WithEndpoint<AlphaServer>(behavior => behavior
                         .When(ctx => ctx.EndpointsStarted, (bus, ctx) => ctx.AlphaServerStarted = true))
                     .WithEndpoint<BetaServer>(behavior => behavior
