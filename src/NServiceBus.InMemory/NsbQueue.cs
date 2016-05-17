@@ -12,6 +12,7 @@ namespace NServiceBus.InMemory
     public class NsbQueue : ConcurrentQueue<TransportMessage>
     {
         private int concurrencyLevel;
+        private readonly InMemoryDatabase inMemoryDatabase;
         private readonly ILog log = LogManager.GetLogger<NsbQueue>();
         private void workerThread(object state)
         {
@@ -20,7 +21,7 @@ namespace NServiceBus.InMemory
 
             if (finalizer != null && handler != null)
             {
-                while (!IsEmpty)
+                while (!IsEmpty && inMemoryDatabase.Enabled)
                 {
                     TransportMessage message;
                     if (TryDequeue(out message))
@@ -28,17 +29,23 @@ namespace NServiceBus.InMemory
                         Exception handlerException = null;
                         try
                         {
+                            log.Debug($"Processing Message: {message.Headers["NServiceBus.EnclosedMessageTypes"]}");
                             handler(message);
                         }
                         catch (Exception error)
                         {
+                            log.Error($"Error Processing Message: {message.Headers["NServiceBus.EnclosedMessageTypes"]}", error);
                             handlerException = error;
                         }
                         finally
                         {
                             try
                             {
-                                finalizer(message, handlerException);
+                                if (inMemoryDatabase.Enabled)
+                                {
+                                    log.Debug($"Done Processing Message: {message.Headers["NServiceBus.EnclosedMessageTypes"]}");
+                                    finalizer(message, handlerException);
+                                }
                             }
                             catch (Exception badHandlerException)
                             {
@@ -58,7 +65,10 @@ namespace NServiceBus.InMemory
                         timer.Dispose();
                     }
 
-                    ProcessQueue();
+                    if (inMemoryDatabase.Enabled)
+                    {
+                        ProcessQueue();
+                    }
                 }, 
                 null, TimeSpan.FromSeconds(1), TimeSpan.FromDays(1));
             }
@@ -66,6 +76,14 @@ namespace NServiceBus.InMemory
             Interlocked.Decrement(ref concurrencyLevel);
         }
 
+        /// <summary>
+        /// Creates a NSB queue that processes messages.
+        /// </summary>
+        /// <param name="database">The owning database.</param>
+        public NsbQueue(InMemoryDatabase database)
+        {
+            inMemoryDatabase = database;
+        }
         public override string ToString()
         {
             return $"Pending: {Count}, Threads: {concurrencyLevel}";

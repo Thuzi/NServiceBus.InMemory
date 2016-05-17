@@ -12,7 +12,7 @@ namespace NServiceBus.InMemory
         public void Init(Address address, TransactionSettings transactionSettings, Func<TransportMessage, bool> tryProcessMessage, Action<TransportMessage, Exception> endProcessMessage)
         {
             if (!InMemoryDatabase.Queues.TryGetValue(address.Queue, out queue) &&
-                !InMemoryDatabase.Queues.TryAdd(address.Queue, queue = new NsbQueue
+                !InMemoryDatabase.Queues.TryAdd(address.Queue, queue = new NsbQueue(InMemoryDatabase)
                 {
                     Enabled = false,
                     MaximumConcurrencyLevel = 1
@@ -29,7 +29,7 @@ namespace NServiceBus.InMemory
         public void Start(int maximumConcurrencyLevel)
         {
             queue.Enabled = true;
-            queue.MaximumConcurrencyLevel = maximumConcurrencyLevel;
+            queue.MaximumConcurrencyLevel = maximumConcurrencyLevel < 1 ? 1 : maximumConcurrencyLevel;
         }
         public void Stop()
         {

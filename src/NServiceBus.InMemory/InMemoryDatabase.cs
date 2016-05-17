@@ -12,11 +12,12 @@ namespace NServiceBus.InMemory
     /// <summary>
     /// The in memory database for nsb.
     /// </summary>
-    public class InMemoryDatabase
+    public class InMemoryDatabase : IDisposable
     {
         private DateTime nextMessageProcessedOn = DateTime.MaxValue;
         private TaskCompletionSource<bool> delayMessageWaiter = new TaskCompletionSource<bool>();
         private Thread delayMessageThread;
+        private bool started;
         private readonly ILog log = LogManager.GetLogger<InMemoryTransport>();
         private void delayMessageThreadLoop(object state)
         {
@@ -41,28 +42,31 @@ namespace NServiceBus.InMemory
 
                     delayMessageWaiter = new TaskCompletionSource<bool>();
 
-                    do
+                    if (started)
                     {
-                        var keys = DelayedMessages.Keys.ToArray();
-
-                        now = DateTime.UtcNow;
-                        min = DateTime.MaxValue;
-
-                        foreach (var key in keys)
+                        do
                         {
-                            var request = DelayedMessages[key];
+                            var keys = DelayedMessages.Keys.ToArray();
 
-                            if (request.Item3 <= now && DelayedMessages.TryRemove(key, out request))
+                            now = DateTime.UtcNow;
+                            min = DateTime.MaxValue;
+
+                            foreach (var key in keys)
                             {
-                                send(request.Item1, request.Item2);
-                            }
-                            else if (min > request.Item3)
-                            {
-                                min = request.Item3;
+                                var request = DelayedMessages[key];
+
+                                if (request.Item3 <= now && DelayedMessages.TryRemove(key, out request))
+                                {
+                                    send(request.Item1, request.Item2);
+                                }
+                                else if (min > request.Item3)
+                                {
+                                    min = request.Item3;
+                                }
                             }
                         }
+                        while (min <= now);
                     }
-                    while (min <= now);
                 }
             }
             catch (ThreadAbortException)
@@ -87,6 +91,11 @@ namespace NServiceBus.InMemory
         }
 
         /// <summary>
+        /// If the server is currently processing messages.
+        /// </summary>
+        public bool Enabled => started;
+
+        /// <summary>
         /// The list of nsb event subscriptions.
         /// </summary>
         public readonly ConcurrentDictionary<Type, HashSet<string>> Topics = new ConcurrentDictionary<Type, HashSet<string>>();
@@ -100,6 +109,19 @@ namespace NServiceBus.InMemory
         /// A place holder for messages that will get added to the queue at a later time.
         /// </summary>
         public readonly ConcurrentDictionary<string, Tuple<TransportMessage, SendOptions, DateTime>> DelayedMessages = new ConcurrentDictionary<string, Tuple<TransportMessage, SendOptions, DateTime>>();
+
+        /// <summary>
+        /// Stops the thread for processing delayed messages.
+        /// </summary>
+        public void Dispose()
+        {
+            var delayMessageThreadCopy = delayMessageThread;
+            delayMessageThread = null;
+            if (delayMessageThreadCopy != null && delayMessageThreadCopy.IsAlive)
+            {
+                delayMessageThreadCopy.Abort();
+            }
+        }
 
         /// <summary>
         /// If the message needs to be delayed then add it the delayed message collection else add it to the queue.
@@ -134,13 +156,8 @@ namespace NServiceBus.InMemory
         /// <param name="purge">If true all messages in the system will be deleted.</param>
         public void StopServer(bool purge = true)
         {
-            var delayMessageThreadCopy = delayMessageThread;
-            delayMessageThread = null;
-            if (delayMessageThreadCopy != null && delayMessageThreadCopy.IsAlive)
-            {
-                delayMessageThreadCopy.Abort();
-            }
             nextMessageProcessedOn = DateTime.MaxValue;
+            started = false;
 
             foreach (var queue in Queues.Values)
             {
@@ -166,8 +183,13 @@ namespace NServiceBus.InMemory
             StopServer(purge);
 
             nextMessageProcessedOn = DateTime.MaxValue;
-            delayMessageThread = new Thread(delayMessageThreadLoop);
-            delayMessageThread.Start();
+            started = true;
+
+            if (delayMessageThread == null)
+            {
+                delayMessageThread = new Thread(delayMessageThreadLoop);
+                delayMessageThread.Start();
+            }
             
             foreach (var queue in Queues.Values)
             {
