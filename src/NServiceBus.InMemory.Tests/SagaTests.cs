@@ -46,6 +46,11 @@ namespace NServiceBus.InMemory.Tests
                             ctx.StartSagaCommandSent = true;
                             ctx.Events.MessageHandled += args =>
                             {
+                                if (args.Exception != null)
+                                {
+                                    return;
+                                }
+
                                 var startSagaCommand = args.Message as StartAlphaSaga;
                                 if (startSagaCommand != null)
                                 {

@@ -47,6 +47,10 @@ namespace NServiceBus.InMemory.Tests
                             ctx.SendCommandSent = true;
                             ctx.Events.MessageHandled += args =>
                             {
+                                if (args.Exception != null)
+                                {
+                                    return;
+                                }
                                 var command = args.Message as AlphaCommand;
                                 if (command != null)
                                 {
@@ -86,6 +90,10 @@ namespace NServiceBus.InMemory.Tests
                         ctx.SendCommandSent = true;
                         ctx.Events.MessageHandled += args =>
                         {
+                            if (args.Exception != null)
+                            {
+                                return;
+                            }
                             var command = args.Message as AlphaCommand;
                             if (command != null)
                             {
@@ -122,6 +130,10 @@ namespace NServiceBus.InMemory.Tests
                         ctx.SendCommandSent = true;
                         ctx.Events.MessageHandled += args =>
                         {
+                            if (args.Exception != null)
+                            {
+                                return;
+                            }
                             var command = args.Message as SendCommandToBeta;
                             if (command != null)
                             {
