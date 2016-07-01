@@ -34,4 +34,12 @@ namespace NServiceBus.InMemory.Tests.Helpers
             }
         }
     }
+    public class RegisterMessageHandledStep : RegisterStep
+    {
+        public RegisterMessageHandledStep()
+            : base("MessageHandledBehavior", typeof(MessageHandledBehavior), "So we can know when a message has been processed.")
+        {
+            InsertBefore(WellKnownStep.InvokeHandlers);
+        }
+    }
 }

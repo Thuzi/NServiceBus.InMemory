@@ -79,7 +79,7 @@ namespace NServiceBus.InMemory.Tests.Helpers
                     return att == null ? TimeSpan.MaxValue : att.TimeToBeReceived;
                 });
 
-            config.Pipeline.Register("MessageHandledBehavior", typeof(MessageHandledBehavior), "So we can know when a message has been processed.");
+            config.Pipeline.Register<RegisterMessageHandledStep>();
 
             if (configurationBuilderCustomization != null)
             {
