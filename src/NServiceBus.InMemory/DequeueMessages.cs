@@ -11,8 +11,9 @@ namespace NServiceBus.InMemory
         public InMemoryDatabase InMemoryDatabase { get; set; }
         public void Init(Address address, TransactionSettings transactionSettings, Func<TransportMessage, bool> tryProcessMessage, Action<TransportMessage, Exception> endProcessMessage)
         {
-            if (!InMemoryDatabase.Queues.TryGetValue(address.Queue, out queue) &&
-                !InMemoryDatabase.Queues.TryAdd(address.Queue, queue = new NsbQueue(InMemoryDatabase)
+            queue = InMemoryDatabase.GetQueue(address.Queue);
+            if (queue == null &&
+                !InMemoryDatabase.CreateQueueIfNecessary(address.Queue, queue = new NsbQueue(InMemoryDatabase)
                 {
                     Enabled = false,
                     MaximumConcurrencyLevel = 1

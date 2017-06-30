@@ -7,7 +7,7 @@ namespace NServiceBus.InMemory
         public InMemoryDatabase InMemoryDatabase { get; set; }
         public void CreateQueueIfNecessary(Address address, string account)
         {
-            InMemoryDatabase.Queues.TryAdd(address.Queue, new NsbQueue(InMemoryDatabase));
+            InMemoryDatabase.CreateQueueIfNecessary(address.Queue, new NsbQueue(InMemoryDatabase));
         }
     }
 }

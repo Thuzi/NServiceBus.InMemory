@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using NServiceBus.Transports;
+﻿using NServiceBus.Transports;
 using NServiceBus.Unicast;
 
 namespace NServiceBus.InMemory
@@ -9,18 +8,11 @@ namespace NServiceBus.InMemory
         public InMemoryDatabase InMemoryDatabase { get; set; }
         public void Defer(TransportMessage message, SendOptions sendOptions)
         {
-            InMemoryDatabase.SendWithDelay(message, sendOptions);
+            InMemoryDatabase.SendWithDelay(new SerializableTransportMessage(message), new SerializableSendOptions(sendOptions));
         }
         public void ClearDeferredMessages(string headerKey, string headerValue)
         {
-            var value = InMemoryDatabase.DelayedMessages.Values
-                .FirstOrDefault(item =>
-                    item.Item1.Headers.ContainsKey(headerKey) &&
-                    item.Item1.Headers[headerKey] == headerValue);
-            if (value != null)
-            {
-                InMemoryDatabase.DelayedMessages.TryRemove(value.Item1.Id, out value);
-            }
+            InMemoryDatabase.ClearDeferredMessages(headerKey, headerValue);
         }
     }
 }
