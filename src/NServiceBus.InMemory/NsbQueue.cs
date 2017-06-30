@@ -9,9 +9,10 @@ namespace NServiceBus.InMemory
     /// <summary>
     /// Represents a queue for an end point.
     /// </summary>
-    public class NsbQueue : ConcurrentQueue<TransportMessage>
+    public class NsbQueue : MarshalByRefObject
     {
         private int concurrencyLevel;
+        private readonly ConcurrentQueue<SerializableTransportMessage> queue = new ConcurrentQueue<SerializableTransportMessage>();
         private readonly InMemoryDatabase inMemoryDatabase;
         private readonly ILog log = LogManager.GetLogger<NsbQueue>();
         private void workerThread(object state)
@@ -21,10 +22,10 @@ namespace NServiceBus.InMemory
 
             if (finalizer != null && handler != null)
             {
-                while (!IsEmpty && inMemoryDatabase.Enabled)
+                while (!queue.IsEmpty && inMemoryDatabase.Enabled)
                 {
-                    TransportMessage message;
-                    if (TryDequeue(out message))
+                    SerializableTransportMessage message;
+                    if (queue.TryDequeue(out message))
                     {
                         Exception handlerException = null;
                         try
@@ -58,12 +59,11 @@ namespace NServiceBus.InMemory
             else
             {
                 Timer timer = null;
+                // ReSharper disable once RedundantAssignment
                 timer = new Timer(timerState =>
                 {
-                    if (timer != null)
-                    {
-                        timer.Dispose();
-                    }
+                    // ReSharper disable once AccessToModifiedClosure
+                    timer?.Dispose();
 
                     if (inMemoryDatabase.Enabled)
                     {
@@ -86,7 +86,7 @@ namespace NServiceBus.InMemory
         }
         public override string ToString()
         {
-            return $"Pending: {Count}, Threads: {concurrencyLevel}";
+            return $"Pending: {queue.Count}, Threads: {concurrencyLevel}";
         }
 
         /// <summary>
@@ -106,6 +106,10 @@ namespace NServiceBus.InMemory
         /// </summary>
         public TransactionSettings TransactionSettings { get; set; }
         /// <summary>
+        /// If the queue is empty.
+        /// </summary>
+        public bool IsEmpty => queue.IsEmpty;
+        /// <summary>
         /// If the queue processing is enabled.
         /// </summary>
         public bool Enabled { get; set; }
@@ -122,9 +126,9 @@ namespace NServiceBus.InMemory
         /// Adds a message to the queue.
         /// </summary>
         /// <param name="message">The message to add.</param>
-        public void AddMessage(TransportMessage message)
+        public void AddMessage(SerializableTransportMessage message)
         {
-            Enqueue(message);
+            queue.Enqueue(message);
             ProcessQueue();
         }
         /// <summary>
@@ -132,10 +136,10 @@ namespace NServiceBus.InMemory
         /// </summary>
         public void Clear()
         {
-            while (!IsEmpty)
+            while (!queue.IsEmpty)
             {
-                TransportMessage message;
-                TryDequeue(out message);
+                SerializableTransportMessage message;
+                queue.TryDequeue(out message);
             }
         }
         /// <summary>
@@ -143,7 +147,10 @@ namespace NServiceBus.InMemory
         /// </summary>
         public void ProcessQueue()
         {
-            if (IsEmpty || !Enabled) return;
+            if (queue.IsEmpty || !Enabled)
+            {
+                return;
+            }
 
             if (MaximumConcurrencyLevel > 0 && Interlocked.Increment(ref concurrencyLevel) > MaximumConcurrencyLevel)
             {

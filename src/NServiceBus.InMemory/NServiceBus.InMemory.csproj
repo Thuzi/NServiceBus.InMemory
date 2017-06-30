@@ -54,6 +54,9 @@
     <Compile Include="PublishMessages.cs" />
     <Compile Include="RunWhenBusStartsAndStops.cs" />
     <Compile Include="SendMessages.cs" />
+    <Compile Include="SerializablePublishOptions.cs" />
+    <Compile Include="SerializableSendOptions.cs" />
+    <Compile Include="SerializableTransportMessage.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

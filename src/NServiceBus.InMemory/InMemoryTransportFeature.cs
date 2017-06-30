@@ -27,12 +27,6 @@ namespace NServiceBus.InMemory
             context.Container.ConfigureComponent<RunWhenBusStartsAndStops>(DependencyLifecycle.SingleInstance);
         }
 
-        protected override string ExampleConnectionStringForErrorMessage
-        {
-            get
-            {
-                return "InMemory";
-            }
-        }
+        protected override string ExampleConnectionStringForErrorMessage => "InMemory";
     }
 }

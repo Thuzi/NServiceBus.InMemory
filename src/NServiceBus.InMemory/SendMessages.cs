@@ -8,7 +8,7 @@ namespace NServiceBus.InMemory
         public InMemoryDatabase InMemoryDatabase { get; set; }
         public void Send(TransportMessage message, SendOptions sendOptions)
         {
-            InMemoryDatabase.SendWithDelay(message, sendOptions);
+            InMemoryDatabase.SendWithDelay(new SerializableTransportMessage(message), new SerializableSendOptions(sendOptions));
         }
     }
 }

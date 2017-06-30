@@ -5,19 +5,21 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NServiceBus.Logging;
-using NServiceBus.Unicast;
 
 namespace NServiceBus.InMemory
 {
     /// <summary>
     /// The in memory database for nsb.
     /// </summary>
-    public class InMemoryDatabase : IDisposable
+    public class InMemoryDatabase : MarshalByRefObject, IDisposable
     {
         private DateTime nextMessageProcessedOn = DateTime.MaxValue;
         private TaskCompletionSource<bool> delayMessageWaiter = new TaskCompletionSource<bool>();
         private Thread delayMessageThread;
         private bool started;
+        private readonly ConcurrentDictionary<string, HashSet<string>> topics = new ConcurrentDictionary<string, HashSet<string>>();
+        private readonly ConcurrentDictionary<string, NsbQueue> queues = new ConcurrentDictionary<string, NsbQueue>();
+        private readonly ConcurrentDictionary<string, Tuple<SerializableTransportMessage, SerializableSendOptions, DateTime>> delayedMessages = new ConcurrentDictionary<string, Tuple<SerializableTransportMessage, SerializableSendOptions, DateTime>>();
         private readonly ILog log = LogManager.GetLogger<InMemoryTransport>();
         private void delayMessageThreadLoop(object state)
         {
@@ -46,16 +48,16 @@ namespace NServiceBus.InMemory
                     {
                         do
                         {
-                            var keys = DelayedMessages.Keys.ToArray();
+                            var keys = delayedMessages.Keys.ToArray();
 
                             now = DateTime.UtcNow;
                             min = DateTime.MaxValue;
 
                             foreach (var key in keys)
                             {
-                                var request = DelayedMessages[key];
+                                var request = delayedMessages[key];
 
-                                if (request.Item3 <= now && DelayedMessages.TryRemove(key, out request))
+                                if (request.Item3 <= now && delayedMessages.TryRemove(key, out request))
                                 {
                                     send(request.Item1, request.Item2);
                                 }
@@ -73,11 +75,11 @@ namespace NServiceBus.InMemory
             {
             }
         }
-        private void send(TransportMessage message, SendOptions sendOptions)
+        private void send(SerializableTransportMessage message, SerializableSendOptions sendOptions)
         {
             try
             {
-                Queues[sendOptions.Destination.Queue].AddMessage(message);
+                queues[sendOptions.Destination.Queue].AddMessage(message);
             }
             catch (Exception error)
             {
@@ -87,32 +89,49 @@ namespace NServiceBus.InMemory
 
         public override string ToString()
         {
-            return $"Queues: {Queues.Count}, Topics: {Topics.Count}, Scheduled: {DelayedMessages.Count}";
+            return $"Queues: {queues.Count}, Topics: {topics.Count}, Scheduled: {delayedMessages.Count}";
+        }
+
+        /// <summary>
+        /// Gets a queue if one exists else returns null.
+        /// </summary>
+        public NsbQueue GetQueue(string queueName)
+        {
+            NsbQueue queue;
+            return queues.TryGetValue(queueName, out queue) ? queue : null;
         }
 
         /// <summary>
         /// If the server is currently processing messages.
         /// </summary>
         public bool Enabled => started;
-
-        /// <summary>
-        /// The list of nsb event subscriptions.
-        /// </summary>
-        public readonly ConcurrentDictionary<Type, HashSet<string>> Topics = new ConcurrentDictionary<Type, HashSet<string>>();
-
-        /// <summary>
-        /// The list of nsb queues.
-        /// </summary>
-        public readonly ConcurrentDictionary<string, NsbQueue> Queues = new ConcurrentDictionary<string, NsbQueue>();
         
         /// <summary>
-        /// A place holder for messages that will get added to the queue at a later time.
+        /// Called when the bus wants to defer a message
         /// </summary>
-        public readonly ConcurrentDictionary<string, Tuple<TransportMessage, SendOptions, DateTime>> DelayedMessages = new ConcurrentDictionary<string, Tuple<TransportMessage, SendOptions, DateTime>>();
+        public void ClearDeferredMessages(string headerKey, string headerValue)
+        {
+            var value = delayedMessages.Values
+                .FirstOrDefault(item =>
+                    item.Item1.Headers.ContainsKey(headerKey) &&
+                    item.Item1.Headers[headerKey] == headerValue);
+            if (value != null)
+            {
+                delayedMessages.TryRemove(value.Item1.Id, out value);
+            }
+        }
 
         /// <summary>
-        /// Stops the thread for processing delayed messages.
+        /// Abstraction of the capability to create queues
         /// </summary>
+        public bool CreateQueueIfNecessary(string queueName, NsbQueue queue)
+        {
+            return queues.TryAdd(queueName, queue);
+        }
+
+        /// <summary>
+            /// Stops the thread for processing delayed messages.
+            /// </summary>
         public void Dispose()
         {
             var delayMessageThreadCopy = delayMessageThread;
@@ -124,11 +143,40 @@ namespace NServiceBus.InMemory
         }
 
         /// <summary>
+        /// Publishes the given messages to all known subscribers
+        /// </summary>
+        /// <param name="message">The message.</param>
+        /// <param name="publishOptions">The publish options for the message.</param>
+        public void Publish(SerializableTransportMessage message, SerializablePublishOptions publishOptions)
+        {
+            HashSet<string> endpoints;
+            if (topics.TryGetValue(publishOptions.EventType, out endpoints))
+            {
+                foreach (var endpoint in endpoints)
+                {
+                    NsbQueue eventQueue;
+                    if (queues.TryGetValue(endpoint, out eventQueue))
+                    {
+                        eventQueue.AddMessage(message);
+                    }
+                    else
+                    {
+                        throw new InvalidProgramException("Unable to add event message to the queue.");
+                    }
+                }
+            }
+            else
+            {
+                log.Warn($"Unable to publish message '{publishOptions.EventType}' because no endpoint subscribed to the message.");
+            }
+        }
+        
+        /// <summary>
         /// If the message needs to be delayed then add it the delayed message collection else add it to the queue.
         /// </summary>
         /// <param name="message">The message.</param>
         /// <param name="sendOptions">The send options for the message.</param>
-        public void SendWithDelay(TransportMessage message, SendOptions sendOptions)
+        public void SendWithDelay(SerializableTransportMessage message, SerializableSendOptions sendOptions)
         {
             var now = DateTime.UtcNow;
 
@@ -137,7 +185,7 @@ namespace NServiceBus.InMemory
             //if the message should be deferred
             if (dueTime > now)
             {
-                DelayedMessages[message.Id] = new Tuple<TransportMessage, SendOptions, DateTime>(message, sendOptions, dueTime);
+                delayedMessages[message.Id] = new Tuple<SerializableTransportMessage, SerializableSendOptions, DateTime>(message, sendOptions, dueTime);
 
                 if (nextMessageProcessedOn > dueTime)
                 {
@@ -149,7 +197,7 @@ namespace NServiceBus.InMemory
                 send(message, sendOptions);
             }
         }
-        
+
         /// <summary>
         /// Stops the server from processing any more messages.
         /// </summary>
@@ -159,7 +207,7 @@ namespace NServiceBus.InMemory
             nextMessageProcessedOn = DateTime.MaxValue;
             started = false;
 
-            foreach (var queue in Queues.Values)
+            foreach (var queue in queues.Values)
             {
                 queue.Enabled = false;
                 if (purge)
@@ -170,7 +218,7 @@ namespace NServiceBus.InMemory
 
             if (purge)
             {
-                DelayedMessages.Clear();
+                delayedMessages.Clear();
             }
         }
 
@@ -191,13 +239,43 @@ namespace NServiceBus.InMemory
                 delayMessageThread.Start();
             }
             
-            foreach (var queue in Queues.Values)
+            foreach (var queue in queues.Values)
             {
                 queue.Enabled = true;
                 if (!queue.IsEmpty)
                 {
                     queue.ProcessQueue();
                 }
+            }
+        }
+        
+        /// <summary>
+        /// Subscribes to the given event.
+        /// </summary>
+        /// <param name="eventType">The event type</param>
+        /// <param name="endpointName">The endpoint name</param>
+        public void Subscribe(string eventType, string endpointName)
+        {
+            if (!topics.TryAdd(eventType, new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                endpointName
+            }))
+            {
+                topics[eventType].Add(endpointName);
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribes from the given event.
+        /// </summary>
+        /// <param name="eventType">The event type</param>
+        /// <param name="endpointName">The endpoint name</param>
+        public void Unsubscribe(string eventType, string endpointName)
+        {
+            HashSet<string> endpoints;
+            if (topics.TryGetValue(eventType, out endpoints))
+            {
+                endpoints.Remove(endpointName);
             }
         }
     }
