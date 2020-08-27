@@ -3,7 +3,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using HeadersKeys = NServiceBus.Headers;
 
-namespace NServiceBus.InMemory
+namespace NServiceBus.Transport.InMemory
 {
     [Serializable]
     public class SerializableTransportMessage : TransportMessage, ISerializable

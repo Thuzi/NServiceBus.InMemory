@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NServiceBus.Logging;
 
-namespace NServiceBus.InMemory
+namespace NServiceBus.Transport.InMemory
 {
     /// <summary>
     /// The in memory database for nsb.

@@ -2,7 +2,7 @@
 using System.Runtime.Serialization;
 using NServiceBus.Unicast;
 
-namespace NServiceBus.InMemory
+namespace NServiceBus.Transport.InMemory
 {
     [Serializable]
     public class SerializableSendOptions : SendOptions, ISerializable

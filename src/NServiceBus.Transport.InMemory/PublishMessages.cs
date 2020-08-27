@@ -1,7 +1,7 @@
 ﻿using NServiceBus.Transports;
 using NServiceBus.Unicast;
 
-namespace NServiceBus.InMemory
+namespace NServiceBus.Transport.InMemory
 {
     public class PublishMessages : IPublishMessages
     {

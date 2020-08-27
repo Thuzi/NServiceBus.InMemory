@@ -4,7 +4,7 @@ using System.Threading;
 using NServiceBus.Logging;
 using NServiceBus.Unicast.Transport;
 
-namespace NServiceBus.InMemory
+namespace NServiceBus.Transport.InMemory
 {
     /// <summary>
     /// Represents a queue for an end point.

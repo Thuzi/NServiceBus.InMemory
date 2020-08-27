@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <VersionPrefix>0.0.1</VersionPrefix>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NServiceBus" Version="5.2.26" />
+  </ItemGroup>
+
+</Project>

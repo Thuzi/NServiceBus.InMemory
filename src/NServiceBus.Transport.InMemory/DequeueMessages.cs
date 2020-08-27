@@ -2,7 +2,7 @@
 using NServiceBus.Transports;
 using NServiceBus.Unicast.Transport;
 
-namespace NServiceBus.InMemory
+namespace NServiceBus.Transport.InMemory
 {
     public class DequeueMessages : IDequeueMessages
     {

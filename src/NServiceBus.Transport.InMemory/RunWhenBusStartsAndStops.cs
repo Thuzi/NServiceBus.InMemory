@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.InMemory
+﻿namespace NServiceBus.Transport.InMemory
 {
     public class RunWhenBusStartsAndStops : IWantToRunWhenBusStartsAndStops
     {

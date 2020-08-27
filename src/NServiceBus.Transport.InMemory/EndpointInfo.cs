@@ -1,4 +1,4 @@
-﻿namespace NServiceBus.InMemory
+﻿namespace NServiceBus.Transport.InMemory
 {
     /// <summary>
     /// Meta data about the end point.

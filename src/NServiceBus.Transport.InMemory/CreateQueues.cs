@@ -1,6 +1,6 @@
 ﻿using NServiceBus.Transports;
 
-namespace NServiceBus.InMemory
+namespace NServiceBus.Transport.InMemory
 {
     public class CreateQueues : ICreateQueues
     {
