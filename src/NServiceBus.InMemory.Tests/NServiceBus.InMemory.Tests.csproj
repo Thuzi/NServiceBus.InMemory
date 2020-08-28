@@ -105,7 +105,12 @@
       <SubType>Designer</SubType>
     </None>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\NServiceBus.Transport.InMemory\NServiceBus.Transport.InMemory.csproj">
+      <Project>{fb65048b-cf09-48da-a719-49648668a27d}</Project>
+      <Name>NServiceBus.Transport.InMemory</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
       <ItemGroup>

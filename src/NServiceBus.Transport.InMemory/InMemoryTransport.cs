@@ -1,18 +1,14 @@
-﻿using NServiceBus.Transports;
+﻿using NServiceBus.Settings;
 
 namespace NServiceBus.Transport.InMemory
 {
     public class InMemoryTransport : TransportDefinition
     {
-        protected override void Configure(BusConfiguration config)
+        public override TransportInfrastructure Initialize(SettingsHolder settings, string connectionString)
         {
-            config.EnableFeature<InMemoryTransportFeature>();
+            return new InMemoryTransportInfrastructure();
         }
 
-        public InMemoryTransport()
-        {
-            HasNativePubSubSupport = true;
-            HasSupportForCentralizedPubSub = true;
-        }
+        public override string ExampleConnectionStringForErrorMessage { get; } = "";
     }
 }
