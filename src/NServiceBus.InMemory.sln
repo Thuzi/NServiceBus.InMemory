@@ -3,11 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30413.136
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NServiceBus.InMemory.Tests", "NServiceBus.InMemory.Tests\NServiceBus.InMemory.Tests.csproj", "{53CF7C08-86B2-49DA-B9F8-78630D3D5396}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NServiceBus.Transport.InMemory", "NServiceBus.Transport.InMemory\NServiceBus.Transport.InMemory.csproj", "{FB65048B-CF09-48DA-A719-49648668A27D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NServiceBus.Transport.InMemory.Tests", "NServiceBus.Transport.InMemory.Tests\NServiceBus.Transport.InMemory.Tests.csproj", "{BD732995-7CE7-4247-86B8-B42B72AAE101}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NServiceBus.Transport.InMemory.Tests", "NServiceBus.Transport.InMemory.Tests\NServiceBus.Transport.InMemory.Tests.csproj", "{BD732995-7CE7-4247-86B8-B42B72AAE101}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,10 +13,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{53CF7C08-86B2-49DA-B9F8-78630D3D5396}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{53CF7C08-86B2-49DA-B9F8-78630D3D5396}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{53CF7C08-86B2-49DA-B9F8-78630D3D5396}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{53CF7C08-86B2-49DA-B9F8-78630D3D5396}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FB65048B-CF09-48DA-A719-49648668A27D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FB65048B-CF09-48DA-A719-49648668A27D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FB65048B-CF09-48DA-A719-49648668A27D}.Release|Any CPU.ActiveCfg = Release|Any CPU

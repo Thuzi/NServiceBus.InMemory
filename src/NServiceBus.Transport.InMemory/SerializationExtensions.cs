@@ -10,15 +10,16 @@ namespace NServiceBus.Transport.InMemory
             var headers = JsonConvert.SerializeObject(message.Headers);
             var body = message.Body;
 
-            return new SerializedMessage(headers, body);
+            return new SerializedMessage(message.MessageId, headers, body);
         }
 
-        public static (Dictionary<string, string> headers, byte[] body) Deserialize(this SerializedMessage message)
+        public static (string messagEId, Dictionary<string, string> headers, byte[] body) Deserialize(this SerializedMessage message)
         {
+            var messageId = message.MessageId;
             var headers = JsonConvert.DeserializeObject<Dictionary<string, string>>(message.Headers);
             var body = message.Body;
 
-            return (headers, body);
+            return (messageId, headers, body);
         }
     }
 }

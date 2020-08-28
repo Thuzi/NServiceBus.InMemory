@@ -22,6 +22,7 @@ namespace NServiceBus.Transport.InMemory
         private ConcurrentDictionary<Task, Task> runningReceiveTasks;
         private Func<MessageContext, Task> onMessage;
         private Func<ErrorContext, Task<ErrorHandleResult>> onError;
+        private CriticalError criticalError;
 
         public InMemoryMessagePump(InMemoryDatabase inMemoryDatabase)
         {
@@ -43,6 +44,7 @@ namespace NServiceBus.Transport.InMemory
             transactionMode = settings.RequiredTransactionMode;
             this.onMessage = onMessage;
             this.onError = onError;
+            this.criticalError = criticalError;
 
             return Task.CompletedTask;
         }
@@ -144,11 +146,7 @@ namespace NServiceBus.Transport.InMemory
         {
             var transportTransaction = new TransportTransaction();
 
-            var (headers, body) = message.Deserialize();
-
-            headers.TryGetValue(Headers.MessageId, out var messageId);
-
-            var succeeded = await HandleMessageWithRetries(messageId, headers, body, transportTransaction, 1).ConfigureAwait(false);
+            var succeeded = await HandleMessageWithRetries(message, transportTransaction, 1).ConfigureAwait(false);
 
             if (!succeeded)
             {
@@ -156,26 +154,40 @@ namespace NServiceBus.Transport.InMemory
             }
         }
 
-        private async Task<bool> HandleMessageWithRetries(string messageId, Dictionary<string, string> headers, byte[] body, TransportTransaction transportTransaction, int processingAttempt)
+        private async Task<bool> HandleMessageWithRetries(SerializedMessage message, TransportTransaction transportTransaction, int processingAttempt)
         {
             try
             {
                 var receiveCancellationTokenSource = new CancellationTokenSource();
+                var (messageId, headers, body) = message.Deserialize();
+
                 var pushContext = new MessageContext(messageId, headers, body, transportTransaction, receiveCancellationTokenSource, new ContextBag());
 
                 await onMessage(pushContext).ConfigureAwait(false);
 
-                return !cancellationTokenSource.IsCancellationRequested;
+                return !receiveCancellationTokenSource.IsCancellationRequested;
             }
             catch (Exception e)
             {
+                var (messageId, headers, body) = message.Deserialize();
                 var errorContext = new ErrorContext(e, headers, messageId, body, transportTransaction, processingAttempt);
 
-                var errorHandlingResult = await onError(errorContext).ConfigureAwait(false);
+                processingAttempt++;
 
-                if (errorHandlingResult == ErrorHandleResult.RetryRequired)
+                try
                 {
-                    return await HandleMessageWithRetries(messageId, headers, body, transportTransaction, processingAttempt).ConfigureAwait(false);
+                    var errorHandlingResult = await onError(errorContext).ConfigureAwait(false);
+
+                    if (errorHandlingResult == ErrorHandleResult.RetryRequired)
+                    {
+                        return await HandleMessageWithRetries(message, transportTransaction, processingAttempt).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    criticalError.Raise($"Failed to execute recoverability policy for message with native ID: `{messageId}`", exception);
+
+                    return await HandleMessageWithRetries(message, transportTransaction, processingAttempt).ConfigureAwait(false);
                 }
 
                 return true;
