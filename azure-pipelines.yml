@@ -1,19 +1,60 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
-trigger:
-- master
+name: $(Date:yyyyMMdd)$(Rev:-rrr)
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: OnPrem
+
+resources:
+- repo: self
+  clean: true
+
+variables:
+  BuildConfiguration: 'Release'
+  ProjectPath: 'src/NServiceBus.Transport.InMemory'
+  ArtifactsDirectory: '$(Build.ArtifactStagingDirectory)/packages'
+
+trigger:
+  batch: true
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - '$(ProjectPath)/*'
+
+pr:
+- master
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+# Pack events package
+## for prerelease (within pull request)
+- task: DotNetCoreCLI@2
+  displayName: 'Pack events package (prerelease)'
+  condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/master'))
+  inputs:
+    command: pack
+    configuration: '$(BuildConfiguration)'
+    packagesToPack: '**/$(ProjectPath).csproj'
+    packDirectory: $(ArtifactsDirectory)
+    buildProperties: 'VersionSuffix=$(Build.BuildNumber);RepositoryUrl=$(Build.Repository.Uri);PackageProjectUrl=$(Build.Repository.Uri)'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+## for master
+- task: DotNetCoreCLI@2
+  displayName: 'Pack events package (release)'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  inputs:
+    command: pack
+    configuration: '$(BuildConfiguration)'
+    packagesToPack: '**/$(ProjectPath).csproj'
+    packDirectory: $(ArtifactsDirectory)
+    buildProperties: 'RepositoryUrl=$(Build.Repository.Uri);PackageProjectUrl=$(Build.Repository.Uri)'
+
+# Publish
+- task: NuGetCommand@2
+  displayName: 'Push package to Artifacts'
+  condition: succeeded()
+  inputs:
+    command: push
+    packagesToPush: '$(ArtifactsDirectory)/*.nupkg'
+    nuGetFeedType: 'internal'
+    publishVstsFeed: 'main'
+    allowPackageConflicts: true
