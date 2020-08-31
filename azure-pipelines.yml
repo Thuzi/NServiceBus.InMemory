@@ -9,7 +9,7 @@ resources:
 
 variables:
   BuildConfiguration: 'Release'
-  ProjectPath: 'src/NServiceBus.Transport.InMemory'
+  ProjectName: 'NServiceBus.Transport.InMemory'
   ArtifactsDirectory: '$(Build.ArtifactStagingDirectory)/packages'
 
 trigger:
@@ -19,7 +19,7 @@ trigger:
     - master
   paths:
     include:
-    - '$(ProjectPath)/*'
+    - '$(ProjectName)/*'
 
 pr:
 - master
@@ -33,7 +33,7 @@ steps:
   inputs:
     command: pack
     configuration: '$(BuildConfiguration)'
-    packagesToPack: '**/$(ProjectPath).csproj'
+    packagesToPack: '**/$(ProjectName).csproj'
     packDirectory: $(ArtifactsDirectory)
     buildProperties: 'VersionSuffix=$(Build.BuildNumber);RepositoryUrl=$(Build.Repository.Uri);PackageProjectUrl=$(Build.Repository.Uri)'
 
@@ -44,7 +44,7 @@ steps:
   inputs:
     command: pack
     configuration: '$(BuildConfiguration)'
-    packagesToPack: '**/$(ProjectPath).csproj'
+    packagesToPack: '**/$(ProjectName).csproj'
     packDirectory: $(ArtifactsDirectory)
     buildProperties: 'RepositoryUrl=$(Build.Repository.Uri);PackageProjectUrl=$(Build.Repository.Uri)'
 
