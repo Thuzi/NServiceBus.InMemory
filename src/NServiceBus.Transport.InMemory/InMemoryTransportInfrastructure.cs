@@ -3,12 +3,21 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using NServiceBus.Performance.TimeToBeReceived;
 using NServiceBus.Routing;
+using NServiceBus.Settings;
 
 namespace NServiceBus.Transport.InMemory
 {
     public class InMemoryTransportInfrastructure : TransportInfrastructure
     {
         private readonly InMemoryDatabase inMemoryDatabase = new InMemoryDatabase();
+
+        public InMemoryTransportInfrastructure(SettingsHolder settings)
+        {
+            if (settings.TryGet(out InMemoryDatabase database))
+            {
+                inMemoryDatabase = database;
+            }
+        }
 
         public override TransportReceiveInfrastructure ConfigureReceiveInfrastructure()
         {

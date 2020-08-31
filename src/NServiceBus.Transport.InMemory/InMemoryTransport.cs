@@ -6,7 +6,7 @@ namespace NServiceBus.Transport.InMemory
     {
         public override TransportInfrastructure Initialize(SettingsHolder settings, string connectionString)
         {
-            return new InMemoryTransportInfrastructure();
+            return new InMemoryTransportInfrastructure(settings);
         }
 
         public override string ExampleConnectionStringForErrorMessage { get; } = "";

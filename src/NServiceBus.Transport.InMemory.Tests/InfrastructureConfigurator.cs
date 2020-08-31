@@ -11,7 +11,7 @@ public class ConfigureInMemoryTransportInfrastructure : IConfigureTransportInfra
         return new TransportConfigurationResult
         {
             PurgeInputQueueOnStartup = true,
-            TransportInfrastructure = new InMemoryTransportInfrastructure()
+            TransportInfrastructure = new InMemoryTransportInfrastructure(settings)
         };
     }
 
