@@ -8,5 +8,5 @@ acceptance testing with NServiceBus read [this blog](https://roycornelissen.word
 `Install-Package NServiceBus.InMemory`
 
 
-### NServiceBus 6.x Support
-Currrently this transport only supports 5.x versions of NServiceBus. We are planning on supporting 6.x versions of NServiceBus in the future.
+### NServiceBus 7.x Support
+This transport only supports NServiceBus 7.x.
